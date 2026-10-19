@@ -1,0 +1,37 @@
+# Both test suites on every pull request and every push to main.
+#
+# The job holds no secret and no deploy credentials: deploying the worker
+# stays a manual step.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Node 24: the worker tests use node:sqlite.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Worker (Node)
+        run: node --test api/test/*.test.mjs
+      # CI=true: without Node 24 the cross-checks fail instead of skipping.
+      - name: Tools and cross-checks (Python)
+        run: python3 -m unittest discover -s tests

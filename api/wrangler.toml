@@ -1,0 +1,56 @@
+name = "openpinsheet-api"
+main = "src/worker.js"
+compatibility_date = "2026-10-17"
+workers_dev = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "openpinsheet"
+database_id = "a485fbf6-fca1-4fe0-ac35-9530d4537c95"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "openpinsheet"
+
+# 30 requests per minute per reader. The worker asks this binding for every live
+# request; Cloudflare counts per location, so the limit is approximate.
+# `simple.period` is 10 or 60 seconds. namespace_id is a positive integer that
+# keeps the counters apart from other limit bindings of this account.
+[[ratelimits]]
+name = "LIVE_LIMIT"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+# The ceiling of a key bound to origins, which all visitors of one site share
+# and whose LIVE_LIMIT counts per visitor IP: 300 requests per minute for the
+# key as a whole, ten visitors at the full rate at once. Without it, a copied
+# key with rotating IPs would only meet the day limit. Set from the real
+# traffic of the site.
+[[ratelimits]]
+name = "SHARED_LIMIT"
+namespace_id = "1002"
+simple = { limit = 300, period = 60 }
+
+# The review mail for a new data partner (API.md 3.1). Cloudflare only sends
+# to a verified destination of Email Routing; info@openyardage.com is one,
+# and openpinsheet.com forwards info@ there. The sender is on openpinsheet.com,
+# the zone with Email Routing. The secret REVIEW_SECRET signs the review link
+# (wrangler secret put REVIEW_SECRET).
+[[send_email]]
+name = "REVIEW_MAIL"
+destination_address = "info@openyardage.com"
+
+# The GitHub accounts that see the admin area of the account (API.md 3.1):
+# the list of data partners with Confirm and Block: the operator's GitHub id.
+[vars]
+ADMIN_GITHUB_IDS = "77497100"
+
+[triggers]
+crons = ["30 3 * * *"]
+
+[[routes]]
+pattern = "api.openpinsheet.com"
+custom_domain = true
+
+[observability]
+enabled = false

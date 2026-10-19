@@ -1,0 +1,93 @@
+# Approval: sensitive paths.
+#
+# A pull request may merge automatically once every required check is green
+# (tools/automerge.py turns on gh pr merge --auto). Excepted are pull requests
+# that touch sensitive paths: the published format, the live database, the
+# worker configuration, the licences and the workflows. There the
+# operator decides and says so with the label human-ok. The list and its
+# reasons live in tools/sensitive_paths.py, not here.
+#
+# This works as a gate only while the ruleset on main requires the check
+# "Sensitive paths" (a repository setting of the operator).
+#
+# WHY pull_request_target AND NOT pull_request. With pull_request, this
+# workflow and the tool run in the version FROM THE PULL REQUEST. A pull
+# request that shortens the list or edits this file would check itself with
+# its own weakened version and pass. pull_request_target takes workflow and
+# checkout from main. The known catch of this trigger is running code from the
+# pull request with privileges; no code from the pull request runs here: the
+# file list comes from the API, the tool from main.
+#
+# What this does not do: it does not hold against anyone with write access,
+# since they can set the label as well. It catches mistakes
+# in places the tests do not see. And rerunning an old run replays its old
+# labels and its old main; start a fresh run with a push or a label instead.
+
+name: Approval
+
+on:
+  pull_request_target:
+    # labeled and unlabeled, so setting or removing human-ok reruns the check;
+    # otherwise it would stay red until the next push.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    # Only pull requests against main. For another base, github.sha would be
+    # that branch's head and the tool would come from there instead of main.
+    branches: [main]
+
+# pull-requests: write only to remove human-ok after a new push, see below.
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: approval-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sensitive:
+    name: Sensitive paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # main as it is NOW, on purpose, not the pull request. With
+      # pull_request_target, github.sha is the head of the base branch at the
+      # time of the event. pull_request.base.sha would be main at the last
+      # update of the pull request, and an old pull request would check
+      # against an old list.
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      # Through the REST list and not gh pr view: its files field stops at 100
+      # files. A rename counts the old name too, or moving a sensitive file
+      # would pass as harmless.
+      - name: Fetch changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --paginate "repos/$REPO/pulls/$NUMBER/files" \
+            --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/files.txt"
+          wc -l < "$RUNNER_TEMP/files.txt"
+
+      # human-ok approves what the operator saw. A push after it may add
+      # sensitive changes nobody approved, so the label goes and the operator
+      # sets it again. Removing it starts an unlabeled run, which then decides.
+      - name: Remove human-ok after a new push
+        if: github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'human-ok')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/human-ok"
+
+      # Labels as JSON through env and never spliced into the command line: a
+      # label name is text from the web interface and may contain commas.
+      # After a push no label counts, see the step above.
+      - name: Check sensitive paths
+        env:
+          LABELS: ${{ github.event.action == 'synchronize' && '[]' || toJSON(github.event.pull_request.labels.*.name) }}
+        run: python3 tools/sensitive_paths.py --files "$RUNNER_TEMP/files.txt" --labels-json "$LABELS"

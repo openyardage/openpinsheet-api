@@ -1,0 +1,27 @@
+{
+ "format": 1,
+ "generated": "2027-04-15",
+ "license": {
+  "name": "Open Database License 1.0",
+  "spdx": "ODbL-1.0",
+  "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+ },
+ "files": [
+  {
+   "path": "days/2027-04-12.csv",
+   "kind": "day",
+   "date": "2027-04-12",
+   "bytes": 1064,
+   "sha256": "d1f0972dd3830e8654216806f85515796826fb9281d2a9506bad9170aaba9406",
+   "rows": 7
+  },
+  {
+   "path": "days/2027-04-12.geojson",
+   "kind": "day",
+   "date": "2027-04-12",
+   "bytes": 2803,
+   "sha256": "cb2f79bcb593449928fd814dbfa03dd052ed9fcb43419597c1e5ca66a1dd6f08",
+   "rows": 7
+  }
+ ]
+}

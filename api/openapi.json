@@ -1,0 +1,1307 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenPinsheet API",
+    "version": "1.0.0",
+    "description": "OpenPinsheet publishes where the pin was, by date and hole, as open data under the Open Database License 1.0. GET /live and GET /pins need a reader key: a reader logs in with GitHub at GET /auth/github and gets one, shown once. A data partner delivers the pins of one ground for one day with POST /submissions, using a partner key from the account page at /v1/account. Both keys go as Authorization: Bearer. Once a day is closed it is frozen into files served under https://data.openpinsheet.com/v1, without a key. Errors are problem details (RFC 9457) with a fixed code in error. Every other path answers 404 not_found, a wrong method 405 method_not_allowed with Allow, and an unexpected failure 500 internal_error. HEAD works wherever GET does and is counted like it. The account page and the review links under /v1/account and /v1/review are pages for people and not described here. A change a client would misread comes as /v2, run next to /v1 for a year.",
+    "license": {
+      "name": "Open Database License 1.0",
+      "identifier": "ODbL-1.0",
+      "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+    },
+    "contact": { "name": "OpenPinsheet", "email": "info@openpinsheet.com" }
+  },
+  "externalDocs": { "description": "Source code of this API (AGPL-3.0-or-later) and the data format; this description is Apache-2.0", "url": "https://github.com/openyardage/openpinsheet" },
+  "servers": [{ "url": "https://api.openpinsheet.com/v1" }],
+  "tags": [
+    {
+      "name": "Live pins",
+      "description": "For apps: the current pins in an area while the day is still open, with a key from the GitHub login."
+    },
+    {
+      "name": "Past days",
+      "description": "For apps and research: the closed days of an area, up to 31 days at once, with the same key as the live pins."
+    },
+    { "name": "Reader login", "description": "For readers of the live API: log in with GitHub and get one key." },
+    {
+      "name": "Submissions",
+      "description": "For data partners: deliver the pins of one ground for one day, with a bearer key."
+    },
+    { "name": "Files", "description": "Closed days, published as files on data.openpinsheet.com." }
+  ],
+  "paths": {
+    "/live": {
+      "get": {
+        "tags": ["Live pins"],
+        "summary": "Today's pins in an area",
+        "operationId": "getLive",
+        "security": [{ "readerKey": [] }],
+        "description": "A reader key is required, as Authorization: Bearer. A reader logs in with GitHub at GET /auth/github and gets a key, shown once; one key per GitHub account is active and a new login replaces the old one. Any website may call it (CORS '*'), and a script may read the limit headers. Limits per GitHub account, kept across a new login: 30 requests a minute and 1000 per UTC day; a key bound to a website's origins may have another day limit and counts its minute limit per visitor, with a ceiling of about 300 a minute for the key (Cloudflare counts per location). Every answer that spends a request carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset; a malformed box is refused before anything is counted. For files on data.openpinsheet.com no key is needed. The answer is a GeoJSON FeatureCollection like a published file, with the columns of FORMAT.md 2 and today's UTC date as as_of. The box is at most 0.5 degrees wide and 0.5 degrees high; a box cannot cross the 180th meridian, so query both sides separately. A ground is found through its pins with a coordinate; the day of a ground without any coordinate appears only in the files. For every data partner and ground in the box, only its most recent visible day is returned. The pins of a day D become visible at about 07:00 local time at the ground, not when they are sent: at a small club the working hours of one greenkeeper would otherwise be readable. Local time is taken from longitude, not from time zones: visible_from is D 07:00 UTC minus round(mean lon / 15) hours, with halves rounded up. Cached for five minutes in the reader's browser, never in shared caches; the ETag lets a client ask again without the body. Live records can still change until the day closes; for anything kept, use the files.",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "description": "The box as west,south,east,north in WGS84 degrees. At most 0.5 by 0.5 degrees, west < east and south < north, and the box cannot cross the 180th meridian.",
+            "schema": {
+              "type": "string",
+              "pattern": "^-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?$"
+            },
+            "example": "12.9,51.9,13.1,52.1"
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "The ETag of an earlier answer; a match answers 304 without a body.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The pins in the box that are visible now. The coordinates in the example are invented and lie near 0/0.",
+            "content": {
+              "application/geo+json": {
+                "schema": { "$ref": "#/components/schemas/FeatureCollection" },
+                "example": {
+                  "type": "FeatureCollection",
+                  "format": 1,
+                  "as_of": "2027-04-12",
+                  "license": {
+                    "name": "Open Database License 1.0",
+                    "spdx": "ODbL-1.0",
+                    "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+                  },
+                  "attribution": "Pin positions: OpenPinsheet and its data partners, Open Database License 1.0. Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL).",
+                  "notes": ["OpenPinsheet live pins as of 2027-04-12. Format 1.", "Licence: Open Database License 1.0 (ODbL) https://opendatacommons.org/licenses/odbl/1-0/", "Attribution: Pin positions: OpenPinsheet and its data partners. Open Database License 1.0.", "Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL)."],
+                  "features": [
+                    {
+                      "type": "Feature",
+                      "geometry": { "type": "Point", "coordinates": [0.0012345, 0.0012345] },
+                      "properties": {
+                        "date": "2027-04-12",
+                        "date_basis": "local",
+                        "hole": "7",
+                        "source": "estimated",
+                        "front_m": 12,
+                        "left_m": 9.5,
+                        "input_front": 12,
+                        "input_offset": 5,
+                        "input_side": "right",
+                        "input_unit": "m",
+                        "channel": "openyardage",
+                        "play_bearing_deg": 274.5
+                      }
+                    },
+                    {
+                      "type": "Feature",
+                      "geometry": { "type": "Point", "coordinates": [0.00124, 0.00124] },
+                      "properties": {
+                        "date": "2027-04-12",
+                        "date_basis": "local",
+                        "hole": "8",
+                        "source": "surveyed",
+                        "accuracy_m": 0.03,
+                        "channel": "openyardage",
+                        "correction": "rtk"
+                      }
+                    },
+                    {
+                      "type": "Feature",
+                      "geometry": null,
+                      "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "9", "missing": true }
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "ETag": { "$ref": "#/components/headers/ETag" },
+              "X-RateLimit-Limit": { "$ref": "#/components/headers/RateLimitLimit" },
+              "X-RateLimit-Remaining": { "$ref": "#/components/headers/RateLimitRemaining" },
+              "X-RateLimit-Reset": { "$ref": "#/components/headers/RateLimitReset" }
+            }
+          },
+          "304": { "$ref": "#/components/responses/NotModified" },
+          "400": {
+            "description": "The box is missing or malformed, larger than 0.5 by 0.5 degrees, or it crosses the 180th meridian. A request refused here costs nothing of the limits.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "examples": {
+                  "invalid_bbox": {
+                    "summary": "bbox is not west,south,east,north",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "bbox must be west,south,east,north",
+                      "error": "invalid_bbox"
+                    }
+                  },
+                  "bbox_too_large": {
+                    "summary": "the box is larger than 0.5 by 0.5 degrees",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "bbox is larger than 0.5 by 0.5 degrees",
+                      "error": "bbox_too_large"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": {
+            "description": "The key is restricted to origins that do not include this request's Origin.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "the key is not allowed for this origin",
+                  "error": "origin_not_allowed"
+                }
+              }
+            }
+          },
+          "405": { "$ref": "#/components/responses/MethodNotAllowed" },
+          "429": {
+            "description": "A limit of the key is spent. Retry-After is 60 seconds for rate_limited, and the seconds until 00:00 UTC for daily_limit. Both carry the day values.",
+            "headers": {
+              "Retry-After": { "$ref": "#/components/headers/RetryAfter" },
+              "X-RateLimit-Limit": { "$ref": "#/components/headers/RateLimitLimit" },
+              "X-RateLimit-Remaining": { "$ref": "#/components/headers/RateLimitRemaining" },
+              "X-RateLimit-Reset": { "$ref": "#/components/headers/RateLimitReset" }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "examples": {
+                  "rate_limited": {
+                    "summary": "more than 30 requests in a minute, or a shared key over its ceiling of 300",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Too Many Requests",
+                      "status": 429,
+                      "detail": "too many requests, try again in a minute",
+                      "error": "rate_limited"
+                    }
+                  },
+                  "daily_limit": {
+                    "summary": "the day limit of the key is reached",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Too Many Requests",
+                      "status": 429,
+                      "detail": "the daily limit of this key is reached",
+                      "error": "daily_limit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/pins": {
+      "get": {
+        "tags": ["Past days"],
+        "summary": "Closed days in an area",
+        "operationId": "getPins",
+        "security": [{ "readerKey": [] }],
+        "description": "The same key, CORS, limits and box as GET /live; the two endpoints share one day counter per GitHub account, so an account has 1000 requests a UTC day across both. from and to are required: from not after to, at most 31 days, and to must be a closed day (D + 3 days, 00:00 UTC). The answer is a GeoJSON FeatureCollection whose records are those of the day files of the range (FORMAT.md 4.2): a ground is in the box as soon as one of its rows has a coordinate in the box, and then all its rows in the range come. The title in notes names the range, and as_of is to. Cached for one day in the reader's browser, never in shared caches; a closed day does not change.",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "description": "The box as west,south,east,north in WGS84 degrees. At most 0.5 by 0.5 degrees, west < east and south < north, and the box cannot cross the 180th meridian.",
+            "schema": {
+              "type": "string",
+              "pattern": "^-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?,-?[0-9]+(\\.[0-9]+)?$"
+            },
+            "example": "12.9,51.9,13.1,52.1"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "description": "The first day of the range.",
+            "schema": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "example": "2027-04-01"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "description": "The last day of the range, a closed day, at most 30 days after from.",
+            "schema": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "example": "2027-04-30"
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "The ETag of an earlier answer; a match answers 304 without a body.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The records of the closed days in the range and the box.",
+            "content": {
+              "application/geo+json": {
+                "schema": { "$ref": "#/components/schemas/FeatureCollection" },
+                "example": {
+                  "type": "FeatureCollection",
+                  "format": 1,
+                  "as_of": "2027-04-05",
+                  "license": {
+                    "name": "Open Database License 1.0",
+                    "spdx": "ODbL-1.0",
+                    "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+                  },
+                  "attribution": "Pin positions: OpenPinsheet and its data partners, Open Database License 1.0. Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL).",
+                  "notes": ["OpenPinsheet pins from 2027-04-01 to 2027-04-05. Format 1.", "Licence: Open Database License 1.0 (ODbL) https://opendatacommons.org/licenses/odbl/1-0/", "Attribution: Pin positions: OpenPinsheet and its data partners. Open Database License 1.0.", "Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL)."],
+                  "features": [
+                    {
+                      "type": "Feature",
+                      "geometry": { "type": "Point", "coordinates": [13.1234573, 52.1234561] },
+                      "properties": {
+                        "date": "2027-04-01",
+                        "date_basis": "local",
+                        "hole": "7",
+                        "source": "estimated",
+                        "front_m": 12,
+                        "left_m": 9.5,
+                        "input_front": 12,
+                        "input_offset": 5,
+                        "input_side": "right",
+                        "input_unit": "m",
+                        "channel": "openyardage",
+                        "play_bearing_deg": 274.5
+                      }
+                    },
+                    {
+                      "type": "Feature",
+                      "geometry": { "type": "Point", "coordinates": [13.1233109, 52.1236012] },
+                      "properties": {
+                        "date": "2027-04-02",
+                        "date_basis": "local",
+                        "hole": "7",
+                        "source": "surveyed",
+                        "accuracy_m": 0.03,
+                        "channel": "openyardage",
+                        "correction": "rtk"
+                      }
+                    },
+                    {
+                      "type": "Feature",
+                      "geometry": null,
+                      "properties": { "date": "2027-04-02", "date_basis": "local", "hole": "9", "missing": true }
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "ETag": { "$ref": "#/components/headers/ETag" },
+              "X-RateLimit-Limit": { "$ref": "#/components/headers/RateLimitLimit" },
+              "X-RateLimit-Remaining": { "$ref": "#/components/headers/RateLimitRemaining" },
+              "X-RateLimit-Reset": { "$ref": "#/components/headers/RateLimitReset" }
+            }
+          },
+          "304": { "$ref": "#/components/responses/NotModified" },
+          "400": {
+            "description": "The box is malformed or too large, the range is malformed or longer than 31 days, or to is not closed yet. A request refused here costs nothing of the limits.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "examples": {
+                  "invalid_bbox": {
+                    "summary": "bbox is not west,south,east,north",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "bbox must be west,south,east,north",
+                      "error": "invalid_bbox"
+                    }
+                  },
+                  "bbox_too_large": {
+                    "summary": "the box is larger than 0.5 by 0.5 degrees",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "bbox is larger than 0.5 by 0.5 degrees",
+                      "error": "bbox_too_large"
+                    }
+                  },
+                  "invalid_range": {
+                    "summary": "from or to is missing or malformed, from is after to, or more than 31 days",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "from and to must be dates, from not after to, at most 31 days",
+                      "error": "invalid_range"
+                    }
+                  },
+                  "range_not_closed": {
+                    "summary": "to is not a closed day yet",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "to must be a closed day; today's pins come from /v1/live",
+                      "error": "range_not_closed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": {
+            "description": "The key is restricted to origins that do not include this request's Origin.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "the key is not allowed for this origin",
+                  "error": "origin_not_allowed"
+                }
+              }
+            }
+          },
+          "405": { "$ref": "#/components/responses/MethodNotAllowed" },
+          "429": {
+            "description": "A limit of the key is spent. Retry-After is 60 seconds for rate_limited, and the seconds until 00:00 UTC for daily_limit. Both carry the day values.",
+            "headers": {
+              "Retry-After": { "$ref": "#/components/headers/RetryAfter" },
+              "X-RateLimit-Limit": { "$ref": "#/components/headers/RateLimitLimit" },
+              "X-RateLimit-Remaining": { "$ref": "#/components/headers/RateLimitRemaining" },
+              "X-RateLimit-Reset": { "$ref": "#/components/headers/RateLimitReset" }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "examples": {
+                  "rate_limited": {
+                    "summary": "more than 30 requests in a minute, or a shared key over its ceiling of 300",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Too Many Requests",
+                      "status": 429,
+                      "detail": "too many requests, try again in a minute",
+                      "error": "rate_limited"
+                    }
+                  },
+                  "daily_limit": {
+                    "summary": "the day limit of the key is reached",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Too Many Requests",
+                      "status": 429,
+                      "detail": "the daily limit of this key is reached",
+                      "error": "daily_limit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/auth/github": {
+      "get": {
+        "tags": ["Reader login"],
+        "summary": "Start the GitHub login for a reader key",
+        "operationId": "authGithub",
+        "security": [],
+        "description": "Redirects (302) to GitHub, asking only for the login. A random state travels in a cookie ops_state (Path=/v1/auth, Max-Age=600) and back in the URL; the callback wants them equal. GitHub returns to /auth/github/callback.",
+        "responses": {
+          "302": {
+            "description": "The Location header points at github.com/login/oauth/authorize.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "ops_state, HttpOnly, Secure, SameSite=Lax, Path=/v1/auth, Max-Age=600.",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "405": { "$ref": "#/components/responses/MethodNotAllowed" },
+          "503": {
+            "description": "The live API is not configured on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "the live API is not configured on this server",
+                  "error": "not_configured"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/github/callback": {
+      "get": {
+        "tags": ["Reader login"],
+        "summary": "GitHub returns here; the answer is the key",
+        "operationId": "authGithubCallback",
+        "security": [],
+        "description": "Checks the state against the cookie, trades the code for a token, reads the GitHub id and login name, and issues one key. The token is used and dropped, never stored. The answer is an HTML page that shows the key once; a blocked account gets an HTML page with 403 and no key.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "description": "The code GitHub sent back.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "description": "Must equal the ops_state cookie.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An HTML page with the key, shown once. The ops_state cookie is dropped.",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          },
+          "400": {
+            "description": "The state is missing or does not match the cookie.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "the login could not be verified, start again",
+                  "error": "invalid_state"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The GitHub account is blocked and gets no key; the answer is an HTML page.",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          },
+          "405": { "$ref": "#/components/responses/MethodNotAllowed" },
+          "502": {
+            "description": "The GitHub login could not be completed.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Gateway",
+                  "status": 502,
+                  "detail": "the GitHub login could not be completed",
+                  "error": "github_error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The live API is not configured on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Service Unavailable",
+                  "status": 503,
+                  "detail": "the live API is not configured on this server",
+                  "error": "not_configured"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions": {
+      "post": {
+        "tags": ["Submissions"],
+        "summary": "Deliver the pins of one ground for one day",
+        "operationId": "postSubmissions",
+        "security": [{ "partnerKey": [] }],
+        "description": "A submission replaces everything the same data partner sent for the same group and date; holes it does not name are gone afterwards. To correct a day, send the whole day again. The key comes first: a missing key is answered before size and JSON are looked at. The body is at most 64 KiB. All pins with a coordinate must lie within 5 km of each other: one submission is one ground. A field that is not named in API.md 1.1, in the envelope or in a pin, is a problem even when it is null. If any check fails, nothing is stored. The date must lie within one day of today's UTC date (yesterday, today or tomorrow) and the day must still be open.",
+        "parameters": [
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "description": "With dry_run=true (or 1) everything is checked and nothing is stored; the answer says stored 0 and dry_run true. Without dry_run, or with false or 0, the pins are stored. Any other value, an empty one too, is 400 invalid_dry_run, so a misspelt switch never stores.",
+            "schema": { "type": "string", "enum": ["true", "false", "1", "0"] },
+            "example": "true"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Submission" },
+              "examples": {
+                "submissionDay": { "$ref": "#/components/examples/submissionDay" },
+                "submissionLostPosition": { "$ref": "#/components/examples/submissionLostPosition" },
+                "submissionUnknownField": { "$ref": "#/components/examples/submissionUnknownField" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Everything was checked and stored.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SubmissionResult" },
+                "examples": {
+                  "stored": {
+                    "summary": "a stored day",
+                    "value": {
+                      "stored": 3,
+                      "group": "w620181682",
+                      "date": "2027-04-12",
+                      "replaced": false,
+                      "visible_from": "2027-04-12T06:00:00Z"
+                    }
+                  },
+                  "dry_run": {
+                    "summary": "the same day with dry_run=1",
+                    "value": {
+                      "stored": 0,
+                      "group": "w620181682",
+                      "date": "2027-04-12",
+                      "replaced": false,
+                      "visible_from": "2027-04-12T06:00:00Z",
+                      "dry_run": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is not JSON, or dry_run has another value than true, false, 1 or 0.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "examples": {
+                  "invalid_json": {
+                    "summary": "the body is not JSON",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "the body is not JSON",
+                      "error": "invalid_json"
+                    }
+                  },
+                  "invalid_dry_run": {
+                    "summary": "dry_run is neither true, false, 1 nor 0",
+                    "value": {
+                      "type": "about:blank",
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "dry_run must be true or false",
+                      "error": "invalid_dry_run"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "405": { "$ref": "#/components/responses/MethodNotAllowed" },
+          "413": {
+            "description": "The body is larger than 64 KiB.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Content Too Large",
+                  "status": 413,
+                  "detail": "the body is larger than 64 KiB",
+                  "error": "body_too_large"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The submission has problems. problems lists each problem with hole (or null for the envelope), field and message.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Unprocessable Content",
+                  "status": 422,
+                  "detail": "the submission has problems",
+                  "error": "invalid_submission",
+                  "problems": [{ "hole": "1", "field": "accuracy", "message": "is not a field of a pin" }]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A data partner waiting for review has sent 20 grounds that day already (API.md 3.1). Replacing a ground sent that day is allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Too Many Requests",
+                  "status": 429,
+                  "detail": "a data partner waiting for review delivers at most 20 grounds a day",
+                  "error": "partner_limit"
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "delete": {
+        "tags": ["Submissions"],
+        "summary": "Withdraw the pins of one ground for one day",
+        "operationId": "deleteSubmissions",
+        "security": [{ "partnerKey": [] }],
+        "description": "Withdraws everything the same data partner sent for the same group and date while the day is open. A closed day cannot be withdrawn here; a correction gets a file of its own (FORMAT.md 4.3).",
+        "parameters": [
+          {
+            "name": "group",
+            "in": "query",
+            "required": true,
+            "description": "The data partner's own label for the golf ground.",
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,64}$" },
+            "example": "w620181682"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "description": "The calendar date at the ground, YYYY-MM-DD.",
+            "schema": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "example": "2027-04-12"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The pins were withdrawn. deleted is the number of rows removed and is 0 when there was nothing to remove.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DeleteResult" }, "example": { "deleted": 2 } }
+            }
+          },
+          "400": {
+            "description": "group or date is missing, or date is not a real calendar date.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "group and date are required",
+                  "error": "invalid_request"
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": {
+            "description": "The day is already published and cannot be withdrawn here.",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "the day is closed",
+                  "error": "day_closed"
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/index.json": {
+      "servers": [{ "url": "https://data.openpinsheet.com/v1" }],
+      "get": {
+        "tags": ["Files"],
+        "summary": "The list of published files",
+        "operationId": "getIndex",
+        "security": [],
+        "description": "The index of FORMAT.md 4.3: one entry per published file with path, kind, date or year, bytes, sha256 and rows. The index is written last and points at no file that is not there yet. Cached for five minutes. 404 while nothing has been published.",
+        "responses": {
+          "200": {
+            "description": "The index of published files.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Index" },
+                "example": {
+                  "format": 1,
+                  "generated": "2027-04-15",
+                  "license": {
+                    "name": "Open Database License 1.0",
+                    "spdx": "ODbL-1.0",
+                    "url": "https://opendatacommons.org/licenses/odbl/1-0/"
+                  },
+                  "files": [
+                    {
+                      "path": "days/2027-04-12.csv",
+                      "kind": "day",
+                      "date": "2027-04-12",
+                      "bytes": 1234,
+                      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      "rows": 18
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "description": "Nothing has been published yet." }
+        }
+      }
+    },
+    "/days/{date}.csv": {
+      "servers": [{ "url": "https://data.openpinsheet.com/v1" }],
+      "get": {
+        "tags": ["Files"],
+        "summary": "One closed day as CSV",
+        "operationId": "getDayCsv",
+        "security": [],
+        "description": "Every record with that date, from all courses and channels (FORMAT.md 4.1). The file is written once, when the day closes at D + 3 days 00:00 UTC, and does not change after that; cached for one year. 404 until it has been published.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "description": "The calendar date of the day file.",
+            "schema": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "example": "2027-04-12"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The day file.",
+            "content": { "text/csv": { "schema": { "type": "string" } } }
+          },
+          "404": { "description": "The day has not been published yet." }
+        }
+      }
+    },
+    "/days/{date}.geojson": {
+      "servers": [{ "url": "https://data.openpinsheet.com/v1" }],
+      "get": {
+        "tags": ["Files"],
+        "summary": "One closed day as GeoJSON",
+        "operationId": "getDayGeojson",
+        "security": [],
+        "description": "Every record with that date, from all courses and channels (FORMAT.md 4.2). The file is written once, when the day closes at D + 3 days 00:00 UTC, and does not change after that; cached for one year. 404 until it has been published.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "description": "The calendar date of the day file.",
+            "schema": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+            "example": "2027-04-12"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The day file.",
+            "content": { "application/geo+json": { "schema": { "$ref": "#/components/schemas/FeatureCollection" } } }
+          },
+          "404": { "description": "The day has not been published yet." }
+        }
+      }
+    },
+    "/years/{year}.csv": {
+      "servers": [{ "url": "https://data.openpinsheet.com/v1" }],
+      "get": {
+        "tags": ["Files"],
+        "summary": "One year as CSV",
+        "operationId": "getYearCsv",
+        "security": [],
+        "description": "All published days of a year, in the order of FORMAT.md 2.2. The file is rebuilt as further days of the year are published, so it is not frozen like a day file; cached for five minutes. 404 while nothing of the year has been published.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "description": "The year of the year file.",
+            "schema": { "type": "string", "pattern": "^[0-9]{4}$" },
+            "example": "2027"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The year file.",
+            "content": { "text/csv": { "schema": { "type": "string" } } }
+          },
+          "404": { "description": "Nothing of the year has been published yet." }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "readerKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The key of a reader (opr_...), from the GitHub login at GET /auth/github, shown once. Sent as Authorization: Bearer. One key per GitHub account is active and a new login replaces it; only its sha256 is stored. A key in the query string is not accepted. Limits per GitHub account: 30 requests a minute and 1000 per UTC day; a key may be bound to the origins of a website."
+      },
+      "partnerKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The key of a data partner (opp_...). A partner signs up on the account page at /v1/account after logging in with GitHub and agreeing that its pins are shared under the Open Database License 1.0; the page shows the key once. One key is active; a new key replaces the old one at once. Only its sha256 is stored."
+      }
+    },
+    "schemas": {
+      "License": {
+        "type": "object",
+        "required": ["name", "spdx", "url"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "const": "Open Database License 1.0" },
+          "spdx": { "const": "ODbL-1.0" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "description": "An error as problem details (RFC 9457), served as application/problem+json. type is always about:blank and title the reason phrase of the status; error is the fixed code to branch on, and detail its fixed sentence.",
+        "required": ["type", "title", "status", "detail", "error"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "const": "about:blank" },
+          "title": { "type": "string", "description": "The reason phrase of the status (RFC 9110, 15)." },
+          "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+          "detail": { "type": "string", "description": "The fixed sentence of the code." },
+          "error": {
+            "type": "string",
+            "description": "The fixed error code.",
+            "enum": ["bbox_too_large", "body_too_large", "daily_limit", "day_closed", "github_error", "internal_error", "invalid_bbox", "invalid_dry_run", "invalid_json", "invalid_range", "invalid_request", "invalid_state", "invalid_submission", "method_not_allowed", "not_configured", "not_found", "origin_not_allowed", "partner_limit", "range_not_closed", "rate_limited", "unauthorized"]
+          },
+          "problems": {
+            "type": "array",
+            "description": "Only on 422 invalid_submission, one entry per problem.",
+            "items": { "$ref": "#/components/schemas/SubmissionProblem" }
+          }
+        }
+      },
+      "SubmissionProblem": {
+        "type": "object",
+        "required": ["hole", "field", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "hole": { "type": ["string", "null"], "description": "The hole the problem belongs to, or null for the envelope." },
+          "field": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "PinProperties": {
+        "type": "object",
+        "description": "The columns of FORMAT.md 2 except lat and lon (FORMAT.md 4.2). Unknown values are left out, not written as null.",
+        "required": ["date", "date_basis", "hole"],
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Calendar date at the course."
+          },
+          "date_basis": {
+            "type": "string",
+            "enum": ["local", "utc"],
+            "description": "local, or utc where the local date was not recorded and date is the UTC date."
+          },
+          "hole": {
+            "type": "string",
+            "pattern": "^[0-9A-Za-z]{1,8}$",
+            "description": "The hole number as the club names it (7, B3)."
+          },
+          "source": { "type": "string", "enum": ["estimated", "surveyed", "mapped", "detected"] },
+          "accuracy_m": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Horizontal accuracy in metres: the radius that holds the true position with 95 % probability (FORMAT.md 2.3). Required for surveyed and detected, optional for mapped, absent for estimated."
+          },
+          "front_m": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Metres from the front edge of the green, seen from the line of play."
+          },
+          "left_m": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Metres from the left edge of the green, seen from the line of play."
+          },
+          "input_front": {
+            "type": "number",
+            "minimum": 0,
+            "description": "What was typed: distance from the front edge, in input_unit."
+          },
+          "input_offset": {
+            "type": "number",
+            "minimum": 0,
+            "description": "What was typed: distance from the side edge, in input_unit."
+          },
+          "input_side": {
+            "type": "string",
+            "enum": ["left", "right"],
+            "description": "The edge input_offset is measured from."
+          },
+          "input_unit": { "type": "string", "enum": ["m", "yd"] },
+          "channel": {
+            "type": "string",
+            "pattern": "^(?=.{2,40}$)[a-z][a-z0-9]*(?:-[a-z0-9]+)*$",
+            "description": "The channel the record came through (FORMAT.md 5)."
+          },
+          "missing": { "const": true, "description": "A pin was set that day, but its position is lost." },
+          "play_bearing_deg": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMaximum": 360,
+            "description": "Direction of the line of play at the green, degrees clockwise from true north, at most 1 decimal. Only with input_*; with it the conversion of input_* can be redone."
+          },
+          "correction": {
+            "type": "string",
+            "enum": ["none", "ppp", "rtk", "ppk"],
+            "description": "How a surveyed position was corrected: none, ppp (precise point positioning, including Galileo HAS), rtk (real time against a base or a network) or ppk (worked out afterwards against a reference station). Only with source surveyed."
+          }
+        }
+      },
+      "LiveFeature": {
+        "type": "object",
+        "required": ["type", "geometry", "properties"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "const": "Feature" },
+          "geometry": {
+            "description": "A Point [lon, lat], or null where the row has no coordinate (RFC 7946, 3.2). A lost position always has null.",
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["type", "coordinates"],
+                "additionalProperties": false,
+                "properties": {
+                  "type": { "const": "Point" },
+                  "coordinates": {
+                    "type": "array",
+                    "prefixItems": [
+                      { "type": "number", "minimum": -180, "maximum": 180 },
+                      { "type": "number", "minimum": -90, "maximum": 90 }
+                    ],
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": false
+                  }
+                }
+              }
+            ]
+          },
+          "properties": { "$ref": "#/components/schemas/PinProperties" }
+        }
+      },
+      "FeatureCollection": {
+        "type": "object",
+        "description": "An RFC 7946 FeatureCollection with the members of FORMAT.md 4.2. The answers of /live and /pins read like a published file; the first note names what the collection holds.",
+        "required": ["type", "format", "as_of", "license", "attribution", "notes", "features"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "const": "FeatureCollection" },
+          "format": { "const": 1 },
+          "as_of": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          "license": { "$ref": "#/components/schemas/License" },
+          "attribution": { "type": "string" },
+          "notes": { "type": "array", "items": { "type": "string" } },
+          "features": { "type": "array", "items": { "$ref": "#/components/schemas/LiveFeature" } }
+        }
+      },
+      "PinInput": {
+        "type": "object",
+        "description": "The typed values of an estimated position. It holds input_front, input_offset, input_side and input_unit as front, offset, side and unit.",
+        "required": ["front", "offset", "side", "unit"],
+        "additionalProperties": false,
+        "properties": {
+          "front": { "type": "number", "minimum": 0 },
+          "offset": { "type": "number", "minimum": 0 },
+          "side": { "type": "string", "enum": ["left", "right"] },
+          "unit": { "type": "string", "enum": ["m", "yd"] }
+        }
+      },
+      "PositionPin": {
+        "type": "object",
+        "description": "A pin with a position or with the typed values of an estimated position. An optional field that is null counts as absent.",
+        "required": ["hole"],
+        "additionalProperties": false,
+        "properties": {
+          "hole": { "type": "string", "pattern": "^[0-9A-Za-z]{1,8}$" },
+          "lat": {
+            "type": ["number", "null"],
+            "minimum": -90,
+            "maximum": 90,
+            "description": "WGS84 degrees, at most 7 decimals (FORMAT.md 4.1)."
+          },
+          "lon": {
+            "type": ["number", "null"],
+            "minimum": -180,
+            "maximum": 180,
+            "description": "WGS84 degrees, at most 7 decimals (FORMAT.md 4.1)."
+          },
+          "source": { "type": ["string", "null"], "enum": ["estimated", "surveyed", "mapped", "detected", null] },
+          "accuracy_m": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+          "front_m": { "type": ["number", "null"], "minimum": 0 },
+          "left_m": { "type": ["number", "null"], "minimum": 0 },
+          "input": { "anyOf": [{ "$ref": "#/components/schemas/PinInput" }, { "type": "null" }] },
+          "play_bearing_deg": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "exclusiveMaximum": 360,
+            "description": "Direction of the line of play the input was converted with, degrees clockwise from true north, at most 1 decimal. Only with input; optional, but a partner that converts typed distances should send it (FORMAT.md 2.1)."
+          },
+          "correction": {
+            "type": ["string", "null"],
+            "enum": ["none", "ppp", "rtk", "ppk", null],
+            "description": "How a surveyed position was corrected. Only with source surveyed."
+          }
+        }
+      },
+      "MissingPin": {
+        "type": "object",
+        "description": "A lost position: a pin was set, but its position is lost.",
+        "required": ["hole", "missing"],
+        "additionalProperties": false,
+        "properties": { "hole": { "type": "string", "pattern": "^[0-9A-Za-z]{1,8}$" }, "missing": { "const": true } }
+      },
+      "SubmissionPin": {
+        "description": "A position pin or a lost position.",
+        "oneOf": [{ "$ref": "#/components/schemas/PositionPin" }, { "$ref": "#/components/schemas/MissingPin" }]
+      },
+      "Submission": {
+        "type": "object",
+        "required": ["format", "group", "date", "pins"],
+        "additionalProperties": false,
+        "properties": {
+          "format": { "const": 1 },
+          "group": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,64}$",
+            "description": "The data partner's own label for one golf ground. It is never published; it only tells OpenPinsheet which earlier submission a new one replaces."
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "The calendar date at the ground. Published as date with date_basis local."
+          },
+          "pins": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 150,
+            "description": "Each hole at most once.",
+            "items": { "$ref": "#/components/schemas/SubmissionPin" }
+          }
+        }
+      },
+      "SubmissionResult": {
+        "type": "object",
+        "required": ["stored", "group", "date", "replaced", "visible_from"],
+        "additionalProperties": false,
+        "properties": {
+          "stored": { "type": "integer", "minimum": 0, "description": "The number of pins stored, or 0 with dry_run." },
+          "group": { "type": "string" },
+          "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          "replaced": {
+            "type": "boolean",
+            "description": "True when an earlier submission of the same group and date was replaced."
+          },
+          "visible_from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The moment the day becomes visible in GET /live."
+          },
+          "dry_run": { "type": "boolean", "description": "Present and true only with dry_run=true or dry_run=1." }
+        }
+      },
+      "DeleteResult": {
+        "type": "object",
+        "required": ["deleted"],
+        "additionalProperties": false,
+        "properties": { "deleted": { "type": "integer", "minimum": 0, "description": "The number of pins removed." } }
+      },
+      "IndexFile": {
+        "type": "object",
+        "required": ["path", "kind", "bytes", "sha256", "rows"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "description": "Relative to v1/." },
+          "kind": { "type": "string", "enum": ["day", "year"] },
+          "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "A day carries date." },
+          "year": { "type": "string", "pattern": "^[0-9]{4}$", "description": "A year carries year." },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "rows": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "Index": {
+        "type": "object",
+        "description": "The file list of FORMAT.md 4.3.",
+        "required": ["format", "generated", "license", "files"],
+        "additionalProperties": false,
+        "properties": {
+          "format": { "const": 1 },
+          "generated": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          "license": { "$ref": "#/components/schemas/License" },
+          "files": { "type": "array", "items": { "$ref": "#/components/schemas/IndexFile" } }
+        }
+      }
+    },
+    "examples": {
+      "submissionDay": {
+        "summary": "The day of API.md 1",
+        "value": {
+          "format": 1,
+          "group": "w620181682",
+          "date": "2027-04-12",
+          "pins": [
+            {
+              "hole": "7",
+              "lat": 52.1234561,
+              "lon": 13.1234573,
+              "source": "estimated",
+              "front_m": 12,
+              "left_m": 9.5,
+              "input": { "front": 12, "offset": 5, "side": "right", "unit": "m" },
+              "play_bearing_deg": 274.5
+            },
+            { "hole": "8", "lat": 52.1241077, "lon": 13.122915, "source": "surveyed", "accuracy_m": 0.03,
+              "correction": "rtk" },
+            { "hole": "9", "missing": true }
+          ]
+        }
+      },
+      "submissionLostPosition": {
+        "summary": "One lost position",
+        "value": { "format": 1, "group": "w620181682", "date": "2027-04-12", "pins": [{ "hole": "9", "missing": true }] }
+      },
+      "submissionUnknownField": {
+        "summary": "Rejected: a misspelt field named accuracy instead of accuracy_m",
+        "value": {
+          "format": 1,
+          "group": "w620181682",
+          "date": "2027-04-12",
+          "pins": [{ "hole": "1", "lat": 52.1234561, "lon": 13.1234573, "source": "mapped", "accuracy": 0.5 }]
+        },
+        "description": "Deliberately invalid: POST /submissions answers 422 invalid_submission, with a problem for the field accuracy."
+      }
+    },
+    "headers": {
+      "RateLimitLimit": { "description": "The day limit of the key.", "schema": { "type": "integer" } },
+      "RateLimitRemaining": { "description": "Requests left in the UTC day.", "schema": { "type": "integer" } },
+      "RateLimitReset": {
+        "description": "The next 00:00 UTC, when the day limit starts again, in Unix seconds.",
+        "schema": { "type": "integer" }
+      },
+      "RetryAfter": { "description": "Seconds to wait before the next try.", "schema": { "type": "integer" } },
+      "ETag": {
+        "description": "A strong validator of the answer; send it back in If-None-Match.",
+        "schema": { "type": "string" }
+      },
+      "Allow": { "description": "The methods the path takes.", "schema": { "type": "string" } },
+      "WWWAuthenticate": {
+        "description": "The scheme the key goes in: Bearer realm=\"openpinsheet\".",
+        "schema": { "type": "string" }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "The key is missing, unknown or revoked; always the same answer.",
+        "headers": { "WWW-Authenticate": { "$ref": "#/components/headers/WWWAuthenticate" } },
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+            "example": {
+              "type": "about:blank",
+              "title": "Unauthorized",
+              "status": 401,
+              "detail": "a valid key is required in the header Authorization: Bearer",
+              "error": "unauthorized"
+            }
+          }
+        }
+      },
+      "MethodNotAllowed": {
+        "description": "The path does not take this method; Allow lists the ones it takes.",
+        "headers": { "Allow": { "$ref": "#/components/headers/Allow" } },
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+            "example": {
+              "type": "about:blank",
+              "title": "Method Not Allowed",
+              "status": 405,
+              "detail": "method not allowed",
+              "error": "method_not_allowed"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "An unexpected failure.",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+            "example": {
+              "type": "about:blank",
+              "title": "Internal Server Error",
+              "status": 500,
+              "detail": "the request could not be completed",
+              "error": "internal_error"
+            }
+          }
+        }
+      },
+      "NotModified": {
+        "description": "If-None-Match matched the ETag of the answer: nothing changed. The request still counts against the limits.",
+        "headers": {
+          "ETag": { "$ref": "#/components/headers/ETag" },
+          "X-RateLimit-Limit": { "$ref": "#/components/headers/RateLimitLimit" },
+          "X-RateLimit-Remaining": { "$ref": "#/components/headers/RateLimitRemaining" },
+          "X-RateLimit-Reset": { "$ref": "#/components/headers/RateLimitReset" }
+        }
+      }
+    }
+  }
+}

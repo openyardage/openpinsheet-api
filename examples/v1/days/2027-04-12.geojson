@@ -1,0 +1,51 @@
+{
+ "type": "FeatureCollection",
+ "format": 1,
+ "as_of": "2027-04-14",
+ "license": { "name": "Open Database License 1.0", "spdx": "ODbL-1.0", "url": "https://opendatacommons.org/licenses/odbl/1-0/" },
+ "attribution": "Pin positions: OpenPinsheet and its data partners, Open Database License 1.0. Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL).",
+ "notes": [
+  "EXAMPLE. Made-up records that show the format. Not real data.",
+  "OpenPinsheet day file 2027-04-12. Format 1.",
+  "Licence: Open Database License 1.0 (ODbL) https://opendatacommons.org/licenses/odbl/1-0/",
+  "Attribution: Pin positions: OpenPinsheet and its data partners. Open Database License 1.0.",
+  "Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL)."
+ ],
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": { "type": "Point", "coordinates": [0.0002345, 0.0001234] },
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "2", "source": "estimated", "front_m": 12, "left_m": 9.5, "input_front": 12, "input_offset": 5, "input_side": "right", "input_unit": "m", "channel": "openyardage", "play_bearing_deg": 274.5 }
+  },
+  {
+   "type": "Feature",
+   "geometry": { "type": "Point", "coordinates": [0.0004567, 0.0003456] },
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "3", "source": "mapped", "channel": "openyardage" }
+  },
+  {
+   "type": "Feature",
+   "geometry": { "type": "Point", "coordinates": [0.0005432, 0.0004321] },
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "5", "source": "estimated", "front_m": 11, "left_m": 6.5, "input_front": 12, "input_offset": 6, "input_side": "left", "input_unit": "m", "channel": "openyardage", "play_bearing_deg": 181 }
+  },
+  {
+   "type": "Feature",
+   "geometry": { "type": "Point", "coordinates": [0.0006789, 0.0005678] },
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "10", "source": "estimated", "front_m": 8, "left_m": 4.2, "input_front": 9, "input_offset": 7, "input_side": "left", "input_unit": "yd", "channel": "openyardage" }
+  },
+  {
+   "type": "Feature",
+   "geometry": null,
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "11", "missing": true }
+  },
+  {
+   "type": "Feature",
+   "geometry": null,
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "A1", "front_m": 6, "left_m": 3, "channel": "openyardage" }
+  },
+  {
+   "type": "Feature",
+   "geometry": { "type": "Point", "coordinates": [0.0008912, 0.0007891] },
+   "properties": { "date": "2027-04-12", "date_basis": "local", "hole": "B3", "source": "surveyed", "accuracy_m": 0.03, "channel": "openyardage", "correction": "rtk" }
+  }
+ ]
+}

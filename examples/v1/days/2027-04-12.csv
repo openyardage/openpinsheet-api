@@ -1,0 +1,13 @@
+﻿# EXAMPLE. Made-up records that show the format. Not real data.
+# OpenPinsheet day file 2027-04-12. Format 1.
+# Licence: Open Database License 1.0 (ODbL) https://opendatacommons.org/licenses/odbl/1-0/
+# Attribution: Pin positions: OpenPinsheet and its data partners. Open Database License 1.0.
+# Estimated positions are computed against green outlines from OpenStreetMap: map data © OpenStreetMap contributors (ODbL).
+date,date_basis,hole,lat,lon,source,accuracy_m,front_m,left_m,input_front,input_offset,input_side,input_unit,channel,missing,play_bearing_deg,correction
+2027-04-12,local,2,0.0001234,0.0002345,estimated,,12,9.5,12,5,right,m,openyardage,,274.5,
+2027-04-12,local,3,0.0003456,0.0004567,mapped,,,,,,,,openyardage,,,
+2027-04-12,local,5,0.0004321,0.0005432,estimated,,11,6.5,12,6,left,m,openyardage,,181,
+2027-04-12,local,10,0.0005678,0.0006789,estimated,,8,4.2,9,7,left,yd,openyardage,,,
+2027-04-12,local,11,,,,,,,,,,,,1,,
+2027-04-12,local,A1,,,,,6,3,,,,,openyardage,,,
+2027-04-12,local,B3,0.0007891,0.0008912,surveyed,0.03,,,,,,,openyardage,,,rtk

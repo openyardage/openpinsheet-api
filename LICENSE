@@ -1,0 +1,18 @@
+OpenPinsheet uses four licences, one for each kind of work.
+
+  api/ (the server), and           AGPL-3.0-or-later
+  tests/test_api_*.py
+  api/openapi.json, schema/,        Apache-2.0
+  tools/, the other tests/,
+  .github/
+  FORMAT.md, API.md and the         CC-BY-4.0
+  other texts
+  examples/                         ODbL-1.0
+
+The full texts are in LICENSES/. REUSE.toml states the licence of each file
+in machine-readable form (https://reuse.software).
+
+Copyright (C) 2026 the OpenPinsheet contributors.
+
+The published pin positions stand under the Open Database License 1.0. They
+are not in this repository.

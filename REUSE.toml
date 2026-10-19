@@ -1,0 +1,33 @@
+version = 1
+
+# Prose: the format, the API description and the project texts.
+[[annotations]]
+path = ["FORMAT.md", "API.md", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE"]
+SPDX-FileCopyrightText = "2026 the OpenPinsheet contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Tools, schema, workflows and their tests: free to copy into other software.
+[[annotations]]
+path = ["tools/**", "schema/**", "tests/**", ".github/**", ".gitignore", "REUSE.toml"]
+SPDX-FileCopyrightText = "2026 the OpenPinsheet contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+# The server. Whoever runs a modified copy offers its source to its users.
+[[annotations]]
+path = ["api/**", "tests/test_api_*.py"]
+SPDX-FileCopyrightText = "2026 the OpenPinsheet contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The API description, so clients can be generated from it freely. After
+# api/** on purpose: the last matching table wins.
+[[annotations]]
+path = "api/openapi.json"
+SPDX-FileCopyrightText = "2026 the OpenPinsheet contributors"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Made-up example data. Their header names the data licence, as the format
+# requires, so they stand under it.
+[[annotations]]
+path = "examples/**"
+SPDX-FileCopyrightText = "2026 the OpenPinsheet contributors"
+SPDX-License-Identifier = "ODbL-1.0"

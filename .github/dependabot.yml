@@ -1,0 +1,16 @@
+# Weekly pull requests for newer versions of the actions in .github/workflows.
+# The workflows pin each action to a commit SHA; Dependabot updates the SHA
+# and the version comment beside it.
+#
+# cooldown: a release must be five days old before it is proposed, so a
+# compromised release has time to be noticed and pulled first.
+#
+# These pull requests touch .github/ and so wait for human-ok.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 5

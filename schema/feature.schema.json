@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openpinsheet.com/schema/feature.schema.json",
+  "title": "OpenPinsheet feature",
+  "description": "One GeoJSON feature of an OpenPinsheet file, format version 1 (FORMAT.md 4.2).",
+  "$comment": "Rules of FORMAT.md 2.1 that are not written here are left to tools/validate.py: a day file's date matching its name and a year file's year (4.3); rows sorted by date then hole (2.2); the calendar validity of date and as_of, of which only the shape is checked here; the limit of 7 decimals on lat, lon and the other numbers, and of 1 decimal on play_bearing_deg; and the text form of a CSV number (4.1). Two rules are reachable only through the geometry and are written here as if/then: geometry must be null when properties.missing is present, and geometry must be null when source is absent, which is rule 3 of 2.1. channel 'club' (section 5) belongs to a club export only and is rejected here by not: const club.",
+  "type": "object",
+  "required": ["type", "geometry", "properties"],
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "Feature" },
+    "geometry": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["type", "coordinates"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "Point" },
+            "coordinates": {
+              "type": "array",
+              "prefixItems": [
+                { "type": "number", "minimum": -180, "maximum": 180 },
+                { "type": "number", "minimum": -90, "maximum": 90 }
+              ],
+              "minItems": 2,
+              "maxItems": 2,
+              "items": false
+            }
+          }
+        }
+      ]
+    },
+    "properties": { "$ref": "#/$defs/properties" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "properties": { "required": ["missing"] } } },
+      "then": { "properties": { "geometry": { "type": "null" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "properties": {
+            "allOf": [
+              { "not": { "required": ["missing"] } },
+              { "not": { "required": ["source"] } }
+            ]
+          }
+        }
+      },
+      "then": { "properties": { "geometry": { "type": "null" } } }
+    }
+  ],
+  "$defs": {
+    "properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "date_basis": { "enum": ["local", "utc"] },
+        "hole": { "type": "string", "pattern": "^[0-9A-Za-z]{1,8}$" },
+        "source": { "enum": ["estimated", "surveyed", "mapped", "detected"] },
+        "accuracy_m": { "type": "number", "exclusiveMinimum": 0 },
+        "front_m": { "type": "number", "minimum": 0 },
+        "left_m": { "type": "number", "minimum": 0 },
+        "input_front": { "type": "number", "minimum": 0 },
+        "input_offset": { "type": "number", "minimum": 0 },
+        "input_side": { "enum": ["left", "right"] },
+        "input_unit": { "enum": ["m", "yd"] },
+        "channel": { "type": "string", "pattern": "^(?=.{2,40}$)[a-z][a-z0-9]*(?:-[a-z0-9]+)*$", "not": { "const": "club" } },
+        "missing": { "const": true },
+        "play_bearing_deg": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+        "correction": { "enum": ["none", "ppp", "rtk", "ppk"] }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["missing"] },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["source"] },
+                { "required": ["accuracy_m"] },
+                { "required": ["front_m"] },
+                { "required": ["left_m"] },
+                { "required": ["input_front"] },
+                { "required": ["input_offset"] },
+                { "required": ["input_side"] },
+                { "required": ["input_unit"] },
+                { "required": ["channel"] },
+                { "required": ["play_bearing_deg"] },
+                { "required": ["correction"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": { "not": { "required": ["missing"] } },
+          "then": { "required": ["channel"] }
+        },
+        {
+          "if": { "required": ["source"], "properties": { "source": { "enum": ["surveyed", "detected"] } } },
+          "then": { "required": ["accuracy_m"] }
+        },
+        {
+          "if": { "required": ["source"], "properties": { "source": { "const": "estimated" } } },
+          "then": { "not": { "required": ["accuracy_m"] } }
+        },
+        {
+          "if": { "not": { "required": ["source"] } },
+          "then": { "required": ["front_m", "left_m"] }
+        },
+        {
+          "dependentRequired": {
+            "front_m": ["left_m"],
+            "left_m": ["front_m"],
+            "input_front": ["input_offset", "input_side", "input_unit"],
+            "input_offset": ["input_front", "input_side", "input_unit"],
+            "input_side": ["input_front", "input_offset", "input_unit"],
+            "input_unit": ["input_front", "input_offset", "input_side"],
+            "play_bearing_deg": ["input_front", "input_offset", "input_side", "input_unit"]
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              { "required": ["input_front"] },
+              { "required": ["input_offset"] },
+              { "required": ["input_side"] },
+              { "required": ["input_unit"] }
+            ]
+          },
+          "then": {
+            "required": ["source", "input_front", "input_offset", "input_side", "input_unit"],
+            "properties": { "source": { "const": "estimated" } }
+          }
+        },
+        {
+          "if": { "required": ["correction"] },
+          "then": {
+            "required": ["source"],
+            "properties": { "source": { "const": "surveyed" } }
+          }
+        }
+      ]
+    }
+  }
+}
