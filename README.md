@@ -18,7 +18,7 @@ change until the first file goes out.
 | `FORMAT.md` | The format, version 1. The source of truth; code follows it. |
 | `schema/` | JSON Schema for one GeoJSON feature. |
 | `api/` | The API server, a Cloudflare Worker with a D1 database. |
-| `tools/` | Command-line tools: check, index, publish and upload files, manage partners, merge pull requests. Python 3.10+, standard library only. |
+| `tools/` | Command-line tools: check, index, publish and upload files, manage partners. Python 3.10+, standard library only. |
 | `examples/` | Made-up files that show the format. Not real data. |
 | `tests/` | Tests of the tools and cross-checks with the server. |
 

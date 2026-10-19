@@ -12,9 +12,6 @@ people do not build the same thing.
 - The tools follow `FORMAT.md` and the schema. Do not port code from the
   server into `tools/`: the server stands under another licence.
 
-Pull requests that touch the format, the database, the worker configuration,
-the licences or the workflows wait for the maintainer's label `human-ok`.
-
 ## Licence of contributions
 
 Contributions fall under the licence of the file they go into (see
