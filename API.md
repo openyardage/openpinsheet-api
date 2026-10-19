@@ -194,8 +194,7 @@ A day without any coordinate uses `lon` 0.
   `429` `rate_limited` (with `Retry-After: 60`), `429` `daily_limit` (with
   `Retry-After` until 00:00 UTC). Both 429 carry the day values above.
 - A key in the query string is not accepted: it would end up in browser
-  history and server logs. The old header `X-API-Key: <key>` still works
-  until OpenYardage has moved to `Authorization`, then it goes.
+  history and server logs.
 - The files on `data.openpinsheet.com` need no key; that does not change.
 
 ### 2.3 Past days
