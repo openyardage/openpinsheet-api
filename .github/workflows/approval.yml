@@ -3,12 +3,15 @@
 # A pull request may merge automatically once every required check is green
 # (tools/automerge.py turns on gh pr merge --auto). Excepted are pull requests
 # that touch sensitive paths: the published format, the live database, the
-# worker configuration, the licences and the workflows. There the
-# operator decides and says so with the label human-ok. The list and its
-# reasons live in tools/sensitive_paths.py, not here.
+# worker configuration, the licences and the workflows. The maintainer merges
+# those by hand. The list and its reasons live in tools/sensitive_paths.py.
+#
+# The check fails only while auto-merge is on for such a pull request. Off, it
+# passes with a notice, so a merge by hand needs nothing else. Switching
+# auto-merge on reruns it (auto_merge_enabled), and it holds the merge.
 #
 # This works as a gate only while the ruleset on main requires the check
-# "Sensitive paths" (a repository setting of the operator).
+# "Sensitive paths" (a repository setting of the maintainer).
 #
 # WHY pull_request_target AND NOT pull_request. With pull_request, this
 # workflow and the tool run in the version FROM THE PULL REQUEST. A pull
@@ -18,26 +21,25 @@
 # pull request with privileges; no code from the pull request runs here: the
 # file list comes from the API, the tool from main.
 #
-# What this does not do: it does not hold against anyone with write access,
-# since they can set the label as well. It catches mistakes
-# in places the tests do not see. And rerunning an old run replays its old
-# labels and its old main; start a fresh run with a push or a label instead.
+# What this does not do: it does not hold against anyone with write access
+# who merges directly. It catches auto-merge on places the tests do not see.
+# Rerunning an old run replays its old state and its old main; start a fresh
+# run with a push or by switching auto-merge instead.
 
 name: Approval
 
 on:
   pull_request_target:
-    # labeled and unlabeled, so setting or removing human-ok reruns the check;
-    # otherwise it would stay red until the next push.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    # auto_merge_enabled and _disabled, so switching auto-merge reruns the
+    # check; otherwise it would keep its old answer until the next push.
+    types: [opened, synchronize, reopened, auto_merge_enabled, auto_merge_disabled]
     # Only pull requests against main. For another base, github.sha would be
     # that branch's head and the tool would come from there instead of main.
     branches: [main]
 
-# pull-requests: write only to remove human-ok after a new push, see below.
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: approval-${{ github.event.pull_request.number }}
@@ -73,21 +75,8 @@ jobs:
             --jq '.[] | .filename, (.previous_filename // empty)' > "$RUNNER_TEMP/files.txt"
           wc -l < "$RUNNER_TEMP/files.txt"
 
-      # human-ok approves what the operator saw. A push after it may add
-      # sensitive changes nobody approved, so the label goes and the operator
-      # sets it again. Removing it starts an unlabeled run, which then decides.
-      - name: Remove human-ok after a new push
-        if: github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'human-ok')
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          NUMBER: ${{ github.event.pull_request.number }}
-        run: gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/human-ok"
-
-      # Labels as JSON through env and never spliced into the command line: a
-      # label name is text from the web interface and may contain commas.
-      # After a push no label counts, see the step above.
+      # auto_merge is null while auto-merge is off.
       - name: Check sensitive paths
         env:
-          LABELS: ${{ github.event.action == 'synchronize' && '[]' || toJSON(github.event.pull_request.labels.*.name) }}
-        run: python3 tools/sensitive_paths.py --files "$RUNNER_TEMP/files.txt" --labels-json "$LABELS"
+          AUTO_MERGE: ${{ github.event.pull_request.auto_merge != null }}
+        run: python3 tools/sensitive_paths.py --files "$RUNNER_TEMP/files.txt" --auto-merge "$AUTO_MERGE"

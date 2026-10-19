@@ -5,7 +5,7 @@
 # cooldown: a release must be five days old before it is proposed, so a
 # compromised release has time to be noticed and pulled first.
 #
-# These pull requests touch .github/ and so wait for human-ok.
+# These pull requests touch .github/, so the maintainer merges them by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions

@@ -1,10 +1,9 @@
 """Tests for tools/sensitive_paths.py.
 
 The plain match function, and the whole call through subprocess as the
-workflow runs it: a file with one path per line and the labels of the pull
+workflow runs it: a file with one path per line and whether auto-merge is on for the pull
 request.
 """
-import json
 import os
 import subprocess
 import sys
@@ -94,16 +93,22 @@ class Workflow(unittest.TestCase):
         self.assertIn("ref: ${{ github.sha }}\n", self.text)
         self.assertIn("persist-credentials: false", self.text)
 
-    def test_reruns_on_label_changes(self):
-        self.assertIn("types: [opened, synchronize, reopened, labeled, unlabeled]", self.text)
+    def test_reruns_when_auto_merge_switches(self):
+        self.assertIn("types: [opened, synchronize, reopened, auto_merge_enabled, "
+                      "auto_merge_disabled]", self.text)
 
     def test_renames_count_the_old_name(self):
         self.assertIn(".filename, (.previous_filename // empty)", self.text)
 
-    def test_push_drops_the_approval(self):
-        self.assertIn("github.event.action == 'synchronize' && '[]' ||", self.text)
-        self.assertIn('gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/human-ok"',
+    def test_passes_the_auto_merge_state(self):
+        self.assertIn("AUTO_MERGE: ${{ github.event.pull_request.auto_merge != null }}",
                       self.text)
+        self.assertIn('--auto-merge "$AUTO_MERGE"', self.text)
+
+    def test_cannot_write(self):
+        """Nothing in this workflow needs to change the pull request."""
+        self.assertIn("  pull-requests: read\n", self.text)
+        self.assertNotIn("write", self.text.split("jobs:")[0].split("permissions:")[1])
 
     def test_runs_the_tool_from_the_checkout(self):
         self.assertIn("run: python3 tools/sensitive_paths.py --files", self.text)
@@ -119,29 +124,29 @@ class Call(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def call(self, paths, labels=()):
+    def call(self, paths, auto_merge="true"):
         self.list.write_text("\n".join(paths) + "\n", "utf-8")
         return subprocess.run(
             [sys.executable, str(TOOL), "--files", str(self.list),
-             "--labels-json", json.dumps(list(labels))],
+             "--auto-merge", auto_merge],
             capture_output=True, text=True)
 
-    def test_hit_without_label_exits_1_with_error(self):
+    def test_hit_with_auto_merge_exits_1_with_error(self):
         r = self.call(["api/wrangler.toml"])
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("api/wrangler.toml: worker bindings and routes", r.stdout)
-        self.assertIn("::error title=Sensitive paths::1 file(s) need the label "
-                      "human-ok. Only the operator sets it.", r.stdout)
+        self.assertIn("::error title=Sensitive paths::1 file(s) need a merge by hand. "
+                      "Turn auto-merge off; the maintainer merges.", r.stdout)
 
-    def test_human_ok_among_other_labels_exits_0(self):
-        r = self.call(["FORMAT.md"], ["docs", "human-ok", "big"])
+    def test_hit_without_auto_merge_exits_0_with_notice(self):
+        r = self.call(["FORMAT.md"], "false")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("::notice title=Sensitive paths::Approved with human-ok.", r.stdout)
+        self.assertIn("::notice title=Sensitive paths::1 file(s) need a merge by hand; "
+                      "auto-merge stays off.", r.stdout)
 
-    def test_label_with_comma_is_no_approval(self):
-        """"x,human-ok" is ONE label, not two."""
-        r = self.call(["FORMAT.md"], ["x,human-ok"])
-        self.assertEqual(r.returncode, 1, r.stdout)
+    def test_auto_merge_value_must_be_known(self):
+        r = self.call(["FORMAT.md"], "yes")
+        self.assertEqual(r.returncode, 2, r.stdout)
 
     def test_too_many_paths_are_sensitive(self):
         r = self.call(["examples/x%d.csv" % i for i in range(S.API_LIMIT)])

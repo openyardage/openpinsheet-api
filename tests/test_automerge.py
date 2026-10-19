@@ -4,6 +4,7 @@ No network: gh is replaced by a stand-in that gives fixed answers and records
 every call. What counts most is whether `gh pr merge` was called in the end;
 a refusal that merges anyway would be the worst bug this tool can have.
 """
+import base64
 import io
 import json
 import os
@@ -29,14 +30,17 @@ def ruleset(*required, source=A.GITHUB_ACTIONS):
 WITH_REQUIRED = ruleset("tests", "Sensitive paths")
 
 
+LIST_HERE = open(os.path.join(ROOT, "tools", "sensitive_paths.py"), "rb").read()
+
+
 class StandIn:
     def __init__(self, rules=WITH_REQUIRED, state="OPEN", draft=False,
-                 labels=(), files=("api/src/worker.js",), base="main"):
+                 files=("api/src/worker.js",), base="main", list_on_main=LIST_HERE):
         self.answers = {
             "rules": json.dumps(rules),
+            "list": base64.b64encode(list_on_main).decode() + "\n",
             "view": json.dumps({"state": state, "isDraft": draft,
-                                "baseRefName": base,
-                                "labels": [{"name": label} for label in labels]}),
+                                "baseRefName": base}),
             "files": "\n".join(files),
         }
         self.calls = []
@@ -47,6 +51,8 @@ class StandIn:
             return "openyardage/openpinsheet\n"
         if args[0] == "api" and "rules/branches/main" in args[1]:
             return self.answers["rules"]
+        if args[0] == "api" and "contents/tools/sensitive_paths.py?ref=main" in args[1]:
+            return self.answers["list"]
         if args[:2] == ("pr", "view"):
             return self.answers["view"]
         if args[0] == "api" and "/files" in " ".join(args):
@@ -139,18 +145,29 @@ class Automerge(unittest.TestCase):
         self.assertEqual(rc, 2)
         self.assertEqual(s.merged(), [])
 
-    def test_sensitive_path_without_label_no_merge(self):
+    def test_sensitive_path_among_others_no_merge(self):
         s = StandIn(files=("api/src/worker.js", "api/migrations/0006_x.sql"))
         rc, out = self.run_with(s)
         self.assertEqual(rc, 2)
         self.assertIn("api/migrations/0006_x.sql", out)
         self.assertEqual(s.merged(), [])
 
-    def test_sensitive_path_with_label_is_turned_on(self):
-        s = StandIn(files=("FORMAT.md",), labels=("docs", "human-ok"))
-        rc, _ = self.run_with(s)
-        self.assertEqual(rc, 0)
-        self.assertEqual(len(s.merged()), 1)
+    def test_list_differing_from_main_no_merge(self):
+        """A working tree with a shortened list must not decide."""
+        s = StandIn(list_on_main=LIST_HERE + b"# longer on main\n",
+                    files=("FORMAT.md",))
+        rc, out = self.run_with(s)
+        self.assertEqual(rc, 2)
+        self.assertIn("differs from main", out)
+        self.assertEqual(s.merged(), [])
+
+    def test_sensitive_path_is_refused_without_exception(self):
+        """Nothing lets a sensitive pull request through."""
+        s = StandIn(files=("FORMAT.md",))
+        rc, out = self.run_with(s)
+        self.assertEqual(rc, 2)
+        self.assertIn("by hand", out)
+        self.assertEqual(s.merged(), [])
 
     def test_bad_argument_calls_nothing(self):
         s = StandIn()

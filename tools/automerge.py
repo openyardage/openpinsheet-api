@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn on auto-merge for a pull request that may merge without a human.
+"""Turn on auto-merge for a pull request that may merge without the maintainer.
 
     python3 tools/automerge.py <PR number>
 
@@ -17,17 +17,17 @@ First it checks three things and stops without turning anything on:
    workflow of its own with a job of the same name.
 2. The pull request is open, not a draft, and targets main. The ruleset
    applies only there.
-3. It touches no sensitive path, or it carries `human-ok`. This is a
-   shortcut, not the gate: the list comes from the working tree, perhaps
-   from the pull request itself. The gate is the check on the pull request,
-   which takes list and workflow from main (.github/workflows/approval.yml).
-   It sits here so the caller hears the answer at once and not from a red
-   check later.
+3. It touches no sensitive path. The maintainer merges those by hand. The
+   list must be the one on main: a working tree that carries a changed
+   list, perhaps from the pull request itself, is refused. The check
+   "Sensitive paths" on the pull request holds the merge as well, but only
+   after it has rerun; refusing here keeps auto-merge from ever being on.
 
 Exit 0: turned on. 2: refused, with the reason. Anything else: gh failed.
 """
 from __future__ import annotations
 
+import base64
 import json
 import subprocess
 import sys
@@ -72,8 +72,16 @@ def main(argv=None):
               % " and ".join("\"%s\"" % c for c in missing))
         return 2
 
+    # The list on main decides, not a local copy that may be weakened.
+    on_main = base64.b64decode(gh("api", "repos/%s/contents/tools/sensitive_paths.py?ref=main"
+                                  % repo, "--jq", ".content"))
+    if on_main != Path(sensitive_paths.__file__).read_bytes():
+        print("Refused: tools/sensitive_paths.py here differs from main. Run "
+              "this tool from an up-to-date main.")
+        return 2
+
     pr = json.loads(gh("pr", "view", number, "--json",
-                       "state,isDraft,labels,baseRefName"))
+                       "state,isDraft,baseRefName"))
     if pr["state"] != "OPEN" or pr["isDraft"] or pr["baseRefName"] != "main":
         print("Refused: pull request #%s is %s%s and targets %s; auto-merge only "
               "for open pull requests against main." % (
@@ -85,11 +93,10 @@ def main(argv=None):
     # words: a file name may contain a space.
     files = gh("api", "--paginate", "repos/%s/pulls/%s/files" % (repo, number),
                "--jq", ".[] | .filename, (.previous_filename // empty)").splitlines()
-    labels = {label["name"] for label in pr["labels"]}
     hits = sensitive_paths.sensitive(files)
-    if hits and "human-ok" not in labels:
-        print("Refused: pull request #%s touches sensitive paths, the operator "
-              "decides (label human-ok):" % number)
+    if hits:
+        print("Refused: pull request #%s touches sensitive paths; the maintainer "
+              "merges it by hand:" % number)
         for path, reason in hits:
             print("  %s: %s" % (path, reason))
         return 2

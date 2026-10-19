@@ -4,22 +4,19 @@
 A pull request may merge automatically once every required check is green.
 Excepted are files where a mistake is expensive and the tests do not look:
 the published format, the live database, the worker configuration, the
-licences and the workflows. There a human decides, visibly through the label
-`human-ok`.
+licences and the workflows. The maintainer merges those by hand.
 
-    python3 tools/sensitive_paths.py --files FILE --labels-json '["a","b"]'
+    python3 tools/sensitive_paths.py --files FILE --auto-merge true|false
 
-    exit 0   nothing sensitive, or `human-ok` is among the labels
-    exit 1   at least one sensitive path without `human-ok`
+    exit 0   nothing sensitive, or auto-merge is off (merge by hand)
+    exit 1   at least one sensitive path while auto-merge is on
 
-What this guards against: mistakes in places the tests do not see. It does
-NOT hold against anyone with write access who sets the label themselves:
-GitHub does not tell who set a label. `human-ok` is an agreement, not a lock.
+What this guards against: auto-merge in places the tests do not see. It does
+NOT hold against anyone with write access who merges directly.
 """
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 
 # (pattern, reason). A pattern ending in "/" is a directory and matches every
@@ -96,13 +93,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--files", required=True,
                     help="file with one path per line, empty lines do not count")
-    # JSON and not a comma list: a label "x,human-ok" would otherwise be two,
-    # and one of them the approval.
-    ap.add_argument("--labels-json", default="[]",
-                    help='labels of the pull request as a JSON list, e.g. ["human-ok"]')
+    ap.add_argument("--auto-merge", required=True, choices=("true", "false"),
+                    help="whether auto-merge is on for the pull request")
     a = ap.parse_args(argv)
 
-    labels = set(json.loads(a.labels_json or "[]"))
     hits = sensitive(_read_list(a.files))
 
     if not hits:
@@ -112,12 +106,13 @@ def main(argv=None):
     for path, reason in hits:
         print("%s: %s" % (path, reason))
 
-    if "human-ok" in labels:
-        print("::notice title=Sensitive paths::Approved with human-ok.")
+    if a.auto_merge == "false":
+        print("::notice title=Sensitive paths::%d file(s) need a merge by hand; "
+              "auto-merge stays off." % len(hits))
         return 0
 
-    print("::error title=Sensitive paths::%d file(s) need the label human-ok. "
-          "Only the operator sets it." % len(hits))
+    print("::error title=Sensitive paths::%d file(s) need a merge by hand. "
+          "Turn auto-merge off; the maintainer merges." % len(hits))
     return 1
 
 
