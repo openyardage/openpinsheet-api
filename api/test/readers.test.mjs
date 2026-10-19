@@ -90,14 +90,14 @@ test("a key in the query string is refused: it would land in logs and history", 
   assert.equal(response.status, 401);
 });
 
-test("X-API-Key still works until OpenYardage sends Bearer", async () => {
+test("the old header X-API-Key is refused", async () => {
   const env = setup();
   env.DB.startInvocation();
   const response = await worker.fetch(
     new Request(BASE + "/v1/live?bbox=" + encodeURIComponent(BBOX), { headers: { "X-API-Key": READER_KEY } }),
     env,
   );
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 401);
 });
 
 test("a key with origins refuses a foreign Origin with 403", async () => {

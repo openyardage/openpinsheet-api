@@ -49,10 +49,9 @@ const HISTORY_CACHE = "private, max-age=86400";
 // The two read endpoints of API.md 2 answer the same CORS headers. A browser
 // shows a script only the headers named in Expose-Headers besides a short safe
 // list (Fetch standard); without it a page never saw its own limits.
-// X-API-Key is the old reader header, accepted until OpenYardage sends Bearer.
 const CORS = Object.freeze({
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, X-API-Key",
+  "Access-Control-Allow-Headers": "Authorization",
   "Access-Control-Expose-Headers": "ETag, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
 });
 // Two hours is the most Chromium keeps a preflight; Firefox allows a day.
@@ -838,11 +837,11 @@ async function rateLimited(env, reader) {
 
 // The key of the two read endpoints of API.md 2, and the origin it may be used
 // from. Returns { refused } or { reader }. The key goes as Bearer like the
-// partner key; X-API-Key is the old header, kept until OpenYardage has moved.
-// The key in the query string went on 19.10.2026: it ends up in
-// browser history, proxy logs and Referer.
+// partner key. The key in the query string went on 19.10.2026: it ends up in
+// browser history, proxy logs and Referer. The old header X-API-Key went once
+// OpenYardage sent Bearer.
 async function readerFor(request, env) {
-  const rawKey = bearer(request) || request.headers.get("X-API-Key");
+  const rawKey = bearer(request);
   const reader = await readerKeyFor(env, rawKey);
   if (reader === null) {
     return { refused: error(401, "unauthorized", CORS) };

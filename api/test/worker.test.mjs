@@ -69,7 +69,7 @@ function remove(env, group, date, key = KEY) {
 function getLive(env, bbox) {
   env.DB.startInvocation();
   return worker.fetch(request("/v1/live?bbox=" + encodeURIComponent(bbox), {
-    headers: { "X-API-Key": READER_KEY },
+    headers: { Authorization: "Bearer " + READER_KEY },
   }), env);
 }
 

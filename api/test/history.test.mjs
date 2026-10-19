@@ -109,7 +109,7 @@ test("a closed range returns only the rows inside the range and the box", async 
   assert.equal(response.headers.get("Content-Type"), "application/geo+json");
   assert.equal(response.headers.get("Cache-Control"), "private, max-age=86400");
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
-  assert.equal(response.headers.get("Access-Control-Allow-Headers"), "Authorization, X-API-Key");
+  assert.equal(response.headers.get("Access-Control-Allow-Headers"), "Authorization");
   assert.equal(response.headers.get("X-RateLimit-Limit"), "1000");
   assert.equal(response.headers.get("X-RateLimit-Remaining"), "999");
 
@@ -215,7 +215,7 @@ test("OPTIONS /v1/pins answers 204 with the CORS headers", async () => {
   assert.equal(response.status, 204);
   assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
   assert.equal(response.headers.get("Access-Control-Allow-Methods"), "GET, HEAD, OPTIONS");
-  assert.equal(response.headers.get("Access-Control-Allow-Headers"), "Authorization, X-API-Key");
+  assert.equal(response.headers.get("Access-Control-Allow-Headers"), "Authorization");
   assert.equal(response.headers.get("Access-Control-Max-Age"), "7200");
 });
 
