@@ -11,7 +11,7 @@
     },
     "contact": { "name": "OpenPinsheet", "email": "info@openpinsheet.com" }
   },
-  "externalDocs": { "description": "Source code of this API (AGPL-3.0-or-later) and the data format; this description is Apache-2.0", "url": "https://github.com/openyardage/openpinsheet" },
+  "externalDocs": { "description": "Source code of this API (AGPL-3.0-or-later) and the data format; this description is Apache-2.0", "url": "https://github.com/openyardage/openpinsheet-api" },
   "servers": [{ "url": "https://api.openpinsheet.com/v1" }],
   "tags": [
     {
