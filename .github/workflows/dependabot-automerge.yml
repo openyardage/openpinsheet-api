@@ -1,0 +1,75 @@
+# Turns on auto-merge for Dependabot pull requests. GitHub then merges by
+# itself once every required check of the ruleset is green; this workflow
+# merges nothing.
+#
+# Why: without it, Dependabot pull requests would wait for someone to merge
+# them by hand.
+#
+# It does not tell updates apart by kind. That would need
+# dependabot/fetch-metadata, and no third-party action should run here.
+# Updates are covered by the required checks and, except for security
+# updates, by the 7-day cooldown in dependabot.yml. Security updates have no
+# cooldown; they merge as soon as the required checks are green.
+#
+# Anyone with write access can push to a Dependabot branch, and the pull
+# request is merged with it. That is no new power, since write access allows
+# more than that anyway.
+#
+# The first step stops if the ruleset on main requires no checks or cannot be
+# read: without required checks, auto-merge would be a direct merge.
+#
+# Why pull_request and not pull_request_target: pull_request_target runs with
+# the base branch's permissions and secrets and is the classic way to hand
+# them to untrusted code. This workflow checks nothing out and needs only the
+# run's own token, so pull_request is enough.
+#
+# The condition tests the pull request's author, not github.actor: the actor
+# is whoever pushed last and can differ from the author. The head branch must
+# live in this repository, which keeps fork pull requests out.
+
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # gh pr merge --auto needs contents: write and pull-requests: write on the
+    # run's token (GitHub docs, "Automating Dependabot with GitHub Actions").
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check that main requires status checks
+        run: |
+          if ! n=$(gh api "repos/$REPO/rules/branches/main" --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]] | length'); then
+            echo "::error::Cannot read the rules for main. Auto-merge is not enabled."
+            exit 1
+          fi
+          case "$n" in
+            ''|*[!0-9]*|0)
+              echo "::error::The ruleset on main requires no status checks. Without required checks auto-merge would be a direct merge, so it is not enabled."
+              exit 1
+              ;;
+          esac
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+      - name: Enable auto-merge
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
