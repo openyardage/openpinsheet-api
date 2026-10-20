@@ -17,12 +17,17 @@ concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
 
+# Every job runs on ubuntu-latest and never on a self-hosted runner. This
+# repository is public, so anyone can open a pull request, and a workflow on
+# our own machine would run a stranger's code there.
 jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       # Node 24: the worker tests use node:sqlite.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -35,3 +40,71 @@ jobs:
       # CI=true: without Node 24 the cross-checks fail instead of skipping.
       - name: Tools and cross-checks (Python)
         run: python3 -m unittest discover -s tests
+
+  # Checks the workflows themselves. actionlint finds syntax errors, bad
+  # expressions and shell mistakes in run: steps; zizmor finds security
+  # problems such as unpinned actions, event text pasted into scripts, broad
+  # permissions and tokens left in the checkout. Both are pinned to a version
+  # and a checksum: a checker that downloads itself unchecked would be the way
+  # in for the next supply-chain attack. Outside a pull request, or without a
+  # change under .github/, the job ends green at once.
+  workflows:
+    name: Workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Changed?
+        id: ask
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # Only on a pull request: a push to main carries the tree that was
+          # checked on the pull request, and an outage of GitHub Releases or
+          # PyPI should not turn main red.
+          if [ "$EVENT" != pull_request ]; then
+            echo "check=no" >> "$GITHUB_OUTPUT"; echo "not a pull request: no"; exit 0
+          fi
+          # File first, then grep: in a pipe under pipefail, grep -q can end
+          # git diff with SIGPIPE after the first match, and a changed
+          # workflow would count as unchanged.
+          git diff --name-only --no-renames HEAD^1 HEAD > "$RUNNER_TEMP/changed.txt"
+          if grep -q '^\.github/' "$RUNNER_TEMP/changed.txt"; then
+            echo "check=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "check=no" >> "$GITHUB_OUTPUT"; echo "Nothing changed under .github/."
+          fi
+
+      - name: Fetch actionlint and zizmor
+        if: steps.ask.outputs.check == 'yes'
+        env:
+          ACTIONLINT: '1.7.12'
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ZIZMOR_SHA256: 58e878eb2dbd2c6183c105e1ac28c14f7dd1eca44a783f1fe2a69647d012c410
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSLo actionlint.tgz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT}/actionlint_${ACTIONLINT}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tgz" | sha256sum -c -
+          tar -xzf actionlint.tgz actionlint
+          # Own environment: the system Python of a runner refuses pip
+          # install without --break-system-packages, and this keeps it clean.
+          python3 -m venv wf
+          echo "zizmor==1.31.1 --hash=sha256:${ZIZMOR_SHA256}" > wf-requirements.txt
+          wf/bin/pip install --quiet --disable-pip-version-check --require-hashes -r wf-requirements.txt
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/wf/bin" >> "$GITHUB_PATH"
+
+      - name: actionlint
+        if: steps.ask.outputs.check == 'yes'
+        run: actionlint
+
+      - name: zizmor
+        if: steps.ask.outputs.check == 'yes'
+        run: zizmor --offline --min-severity medium .github/
