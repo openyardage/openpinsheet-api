@@ -7,3 +7,5 @@
 **How to verify.** A command or step a reader can repeat, and what they should see.
 
 **Notes.** Side effects, open questions, what this leaves out. Delete if empty.
+
+- [ ] AI tools helped write this change. I checked the result and answer for it as for my own work.
