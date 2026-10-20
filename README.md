@@ -4,8 +4,9 @@ Where the pin was, by date and hole: an open data set of golf pin positions
 under the Open Database License 1.0. This repository holds the format, the
 API server and the tools that check and publish the files.
 
-Status: **draft**. No day has been published yet; the format may still
-change until the first file goes out.
+> [!NOTE]
+> **Draft.** No day has been published yet; the format may still change
+> until the first file goes out.
 
 - Website: https://openpinsheet.com
 - Format: [FORMAT.md](FORMAT.md)
@@ -69,6 +70,14 @@ request failed, 2 means a program error.
 
 CI runs both on every pull request.
 
+## Contributing
+
+Bug reports, questions about the format and reports of data that looks
+wrong are welcome as issues. Read [CONTRIBUTING.md](CONTRIBUTING.md) before a
+pull request, and report security problems privately as
+[SECURITY.md](SECURITY.md) describes. Everyone here follows the
+[Code of Conduct](https://github.com/openyardage/.github/blob/main/CODE_OF_CONDUCT.md).
+
 ## Licences
 
 | Part | Licence |
@@ -83,3 +92,8 @@ people who use it (AGPL section 13). Implementing the format or calling the
 API needs no permission. [LICENSE](LICENSE) and [REUSE.toml](REUSE.toml) give
 the details; the published pin positions stand under the Open Database
 License 1.0.
+
+Estimated pin positions are computed against green outlines from
+OpenStreetMap: map data ©
+[OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
+Open Database License.
